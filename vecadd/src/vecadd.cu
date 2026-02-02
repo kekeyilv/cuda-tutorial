@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     float elapsed_time;
     cudaEventElapsedTime(&elapsed_time, start_d, end_d);
     printf("Kernel finished in %.2f ms.\n", elapsed_time);
-    
+
     // Test
     cudaMemcpy(Ccopy_h, C_d, N * sizeof(float), cudaMemcpyDeviceToHost);
     for (int i = 0; i < N; i++) {
@@ -72,4 +72,10 @@ int main(int argc, char** argv) {
         }
     }
     puts("Test pass.");
+
+    // Free resources
+    cudaFree(A_d);
+    cudaFree(B_d);
+    cudaFree(C_d);
+    delete[] A_h, B_h, C_h, Ccopy_h;
 }
