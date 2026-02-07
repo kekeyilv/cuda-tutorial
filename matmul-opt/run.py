@@ -9,11 +9,22 @@ dims = [
 ]
 
 tile_widths = [2, 8, 16, 32]
+coarse_factors = [1, 4, 16, 64]
 
 for N, K, M in dims:
     print(f"[N = {N}, K = {K}, M = {M}]")
     for tile_width in tile_widths:
         print(f"[tile_width = {tile_width}]")
-        subprocess.run(
-            ["./build/matmul-opt", str(N), str(K), str(M), str(tile_width), "1"]
-        )
+        for coarse_factor in coarse_factors:
+            print(f"[coarse_factor = {coarse_factor}]")
+            subprocess.run(
+                [
+                    "./build/matmul-opt",
+                    str(N),
+                    str(K),
+                    str(M),
+                    str(tile_width),
+                    "1",
+                    str(coarse_factor),
+                ]
+            )
