@@ -1,7 +1,4 @@
-#include <cuda_runtime.h>
-#include <inttypes.h>
-
-#include <cstdio>
+#include <framework.cuh>
 #define MAX_COARSE_FACTOR 64
 
 // Naive implementation
@@ -76,68 +73,27 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Data preparation
-    float *A_h = new float[N * K], *B_h = new float[K * M];
-    float *A_d, *B_d, *C_d, *C_h[2]{new float[N * M], new float[N * M]};
-    for (int i = 0; i < N * K; i++) {
-        A_h[i] = (rand() % 1000) / 1000.0;
-    }
-    for (int i = 0; i < K * M; i++) {
-        B_h[i] = (rand() % 1000) / 1000.0;
-    }
-    cudaMalloc(&A_d, N * K * sizeof(float));
-    cudaMalloc(&B_d, K * M * sizeof(float));
-    cudaMemcpy(A_d, A_h, N * K * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(B_d, B_h, K * M * sizeof(float), cudaMemcpyHostToDevice);
     dim3 block_size(tile_width, tile_width, 1);
     size_t shared_mem_size =
         2 * tile_width * (tile_width + padding) * sizeof(float);
-    // Grid size differs when thread coarsened
-    dim3 grid_sizes[2]{
-        dim3((N + tile_width - 1) / tile_width,
-             (M + tile_width - 1) / tile_width, 1),
+    auto cudaApp =
+        new CudaApp<float*, float*, float*, int, int, int, int, int, int>();
+    auto naiveTask = CudaKernelTask("matmul_naive",
+                                    dim3((N + tile_width - 1) / tile_width,
+                                         (M + tile_width - 1) / tile_width, 1),
+                                    block_size, shared_mem_size, g_matmul);
+    auto tiledTask = CudaKernelTask(
+        "matmul_tiled",
         dim3((N + tile_width - 1) / tile_width,
              (M + tile_width * coarse_factor - 1) / tile_width / coarse_factor,
-             1)};
-    void (*kernels[2])(float*, float*, float*, int, int, int, int, int, int) = {
-        g_matmul,
-        g_matmul_tiled,
-    };
-    const char* labels[2] = {"Naive", "Tiled"};
-
-    for (int i = 0; i < 2; i++) {
-        cudaEvent_t start_d, end_d;
-        cudaMalloc(&C_d, N * M * sizeof(float));
-        cudaEventCreate(&start_d);
-        cudaEventCreate(&end_d);
-        cudaEventRecord(start_d);
-        kernels[i]<<<grid_sizes[i], block_size, shared_mem_size>>>(
-            A_d, B_d, C_d, N, K, M, tile_width, padding, coarse_factor);
-        cudaEventRecord(end_d);
-        cudaEventSynchronize(end_d);
-        cudaMemcpy(C_h[i], C_d, N * M * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaFree(C_d);
-
-        // Measurement
-        float elapsed_time;
-        cudaEventElapsedTime(&elapsed_time, start_d, end_d);
-        printf("%s kernel finished in %.2f ms.\n", labels[i], elapsed_time);
-        cudaEventDestroy(start_d);
-        cudaEventDestroy(end_d);
-    }
-
-    // Test
-    for (int i = 0; i < N * M; i++) {
-        if (C_h[0][i] != C_h[1][i]) {
-            printf("%f %f %d\n", C_h[0][i], C_h[1][i], i);
-            puts("Test failed.");
-            return 1;
-        }
-    }
-    puts("Test pass.");
-
-    // Free resources
-    cudaFree(A_d);
-    cudaFree(B_d);
-    delete[] A_h, B_h, C_h[0], C_h[1];
+             1),
+        block_size, shared_mem_size, g_matmul_tiled);
+    cudaApp->addTask(&naiveTask)
+        ->addTask(&tiledTask)
+        ->initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
+                   CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
+                   CudaSetValue(M), CudaSetValue(tile_width),
+                   CudaSetValue(padding), CudaSetValue(coarse_factor))
+        ->run<2>();
+    delete(cudaApp);
 }

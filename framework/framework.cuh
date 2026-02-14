@@ -176,8 +176,8 @@ class CudaApp {
     }
     template <size_t ResultIndex>
     void run() {
-        std::cout << std::setw(20) << "Name";
-        std::cout << std::setw(10) << "Time";
+        std::cout << std::setw(15) << "Name";
+        std::cout << std::setw(15) << "Time";
         std::cout << std::setw(10) << "Result" << std::endl;
         std::cout << "-------------------------------------------" << std::endl;
         using ResultType =
@@ -202,8 +202,8 @@ class CudaApp {
             if (result_type == results.size()) {
                 results.emplace_back(resultArg.clone());
             }
-            std::cout << std::setw(20) << task->name;
-            std::cout << std::setw(8) << std::fixed << std::setprecision(2)
+            std::cout << std::setw(15) << task->name;
+            std::cout << std::setw(13) << std::fixed << std::setprecision(2)
                       << time << "ms";
             std::cout << std::setw(10) << (char)('A' + result_type)
                       << std::endl;
