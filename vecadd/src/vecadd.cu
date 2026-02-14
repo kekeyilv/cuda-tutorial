@@ -30,6 +30,6 @@ int main(int argc, char** argv) {
         ->addTask(&kernelTask)
         ->initArgs(CudaRandomArray(N, 0, 1), CudaRandomArray(N, 0, 1),
                    CudaNewArray(N), CudaSetValue(N))
-        ->run<2>();
+        ->run<2>(0);
     delete cudaApp;
 }

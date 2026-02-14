@@ -41,7 +41,7 @@ struct CudaArg {
         };
     }
     void toHost() { hostArg = kernelArg; }
-    bool operator==(const CudaArg<T>& b) const {
+    bool isEqualWith(const CudaArg<T>& b, float tolerance) const {
         return this->hostArg == b.hostArg && this->kernelArg == b.kernelArg;
     }
 };
@@ -56,7 +56,8 @@ template <>
 void CudaArg<float*>::toHost();
 
 template <>
-bool CudaArg<float*>::operator==(const CudaArg<float*>& b) const;
+bool CudaArg<float*>::isEqualWith(const CudaArg<float*>& b,
+                                  float tolerance) const;
 
 template <typename T>
 class CudaArgInitializer {
@@ -175,7 +176,7 @@ class CudaApp {
         return this;
     }
     template <size_t ResultIndex>
-    void run() {
+    void run(float tolerance) {
         std::cout << std::setw(15) << "Name";
         std::cout << std::setw(15) << "Time";
         std::cout << std::setw(10) << "Result" << std::endl;
@@ -195,7 +196,7 @@ class CudaApp {
             }
             int result_type = 0;
             for (; result_type < results.size(); result_type++) {
-                if (*results[result_type] == resultArg) {
+                if (results[result_type]->isEqualWith(resultArg, tolerance)) {
                     break;
                 }
             }

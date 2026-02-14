@@ -94,6 +94,6 @@ int main(int argc, char** argv) {
                    CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
                    CudaSetValue(M), CudaSetValue(tile_width),
                    CudaSetValue(padding), CudaSetValue(coarse_factor))
-        ->run<2>();
-    delete(cudaApp);
+        ->run<2>(0);
+    delete cudaApp;
 }

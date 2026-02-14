@@ -44,6 +44,6 @@ int main(int argc, char** argv) {
         ->initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
                    CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
                    CudaSetValue(M))
-        ->run<2>();
-    delete(cudaApp);
+        ->run<2>(1e-3);
+    delete cudaApp;
 }

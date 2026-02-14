@@ -26,9 +26,9 @@ void CudaArg<float*>::toHost() {
 }
 
 template <>
-bool CudaArg<float*>::operator==(const CudaArg<float*>& b) const {
+bool CudaArg<float*>::isEqualWith(const CudaArg<float*>& b,float tolerance) const {
     for (int i = 0; i < size; i++) {
-        if (fabs(hostArg[i] - b.hostArg[i]) > 1e-3) {
+        if (fabs(hostArg[i] - b.hostArg[i]) > tolerance) {
             return false;
         }
     }
