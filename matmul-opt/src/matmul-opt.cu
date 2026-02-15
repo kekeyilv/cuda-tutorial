@@ -59,7 +59,7 @@ __global__ void g_matmul_tiled(float* A, float* B, float* C, int N, int K,
 
 int main(int argc, char** argv) {
     if (argc < 7) {
-        puts("usage: vecadd N K M tile_width padding coase_factor");
+        puts("usage: matmul-opt N K M tile_width padding coase_factor");
         return 2;
     }
     int N = atoi(argv[1]);

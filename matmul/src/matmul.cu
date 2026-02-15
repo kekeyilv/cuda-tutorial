@@ -26,7 +26,7 @@ void matmul(float* A, float* B, float* C, int N, int K, int M) {
 
 int main(int argc, char** argv) {
     if (argc < 4) {
-        puts("usage: vecadd N K M");
+        puts("usage: matmul N K M");
         return 2;
     }
     int N = atoi(argv[1]);
