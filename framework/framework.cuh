@@ -1,6 +1,7 @@
 #ifndef FRAMEWORK_CUH
 #define FRAMEWORK_CUH
 
+#include <cuda_fp16.h>
 #include <cuda_runtime.h>
 
 #include <chrono>
@@ -46,18 +47,49 @@ struct CudaArg {
     }
 };
 
-template <>
-CudaArg<float*>::~CudaArg();
+template <typename T>
+struct CudaArg<T*> {
+    ~CudaArg() {
+        delete[] hostArg;
+        cudaFree(kernelArg);
+    };
+    T *hostArg, *kernelArg;
+    size_t size;
+    CudaArg<T*>* clone() const {
+        CudaArg<T*>* result = new CudaArg<T*>{
+            .hostArg = new T[size],
+            .size = size,
+        };
+        memcpy(result->hostArg, hostArg, size * sizeof(T));
+        cudaMalloc(&result->kernelArg, size * sizeof(T));
+        cudaMemcpy(result->kernelArg, kernelArg, size * sizeof(T),
+                   cudaMemcpyDeviceToDevice);
+        return result;
+    }
+    void toHost() {
+        cudaMemcpy(hostArg, kernelArg, size * sizeof(T),
+                   cudaMemcpyDeviceToHost);
+    }
+    bool isEqualWith(const CudaArg<T*>& b, float tolerance) const {
+        for (int i = 0; i < size; i++) {
+            if (fabs(toFloat(hostArg[i]) - toFloat(b.hostArg[i])) > tolerance) {
+                printf("%d %f %f\n", i, toFloat(hostArg[i]),
+                       toFloat(b.hostArg[i]));
+                return false;
+            }
+        }
+        return true;
+    }
+
+   private:
+    static float toFloat(T value) { return 0.0f; }
+};
 
 template <>
-CudaArg<float*>* CudaArg<float*>::clone() const;
+float CudaArg<float*>::toFloat(float value);
 
 template <>
-void CudaArg<float*>::toHost();
-
-template <>
-bool CudaArg<float*>::isEqualWith(const CudaArg<float*>& b,
-                                  float tolerance) const;
+float CudaArg<half*>::toFloat(half value);
 
 template <typename T>
 class CudaArgInitializer {
@@ -65,24 +97,55 @@ class CudaArgInitializer {
     virtual void init(CudaArg<T>& arg) const = 0;
 };
 
-class CudaNewArray : public CudaArgInitializer<float*> {
+template <typename T = float>
+class CudaNewArray : public CudaArgInitializer<T*> {
    public:
-    CudaNewArray(size_t array_size);
-    void init(CudaArg<float*>& arg) const override;
+    CudaNewArray(size_t array_size) { this->array_size = array_size; }
+
+    void init(CudaArg<T*>& arg) const override {
+        arg.size = array_size;
+        arg.hostArg = new T[array_size];
+        cudaMalloc(&arg.kernelArg, array_size * sizeof(T));
+    }
 
    private:
     size_t array_size;
 };
 
-class CudaRandomArray : public CudaArgInitializer<float*> {
+template <typename T = float>
+class CudaRandomArray : public CudaArgInitializer<T*> {
    public:
-    CudaRandomArray(size_t array_size, float rand_min, float rand_max);
-    void init(CudaArg<float*>& arg) const override;
+    CudaRandomArray(size_t array_size, float rand_min, float rand_max) {
+        this->array_size = array_size;
+        this->rand_min = rand_min;
+        this->rand_max = rand_max;
+    }
+    void init(CudaArg<T*>& arg) const override {
+        arg.size = array_size;
+        arg.hostArg = new T[array_size];
+        cudaMalloc(&arg.kernelArg, array_size * sizeof(T));
+        int64_t seed =
+            std::chrono::steady_clock::now().time_since_epoch().count();
+        std::mt19937 engine(seed);
+        std::uniform_real_distribution<float> dist(rand_min, rand_max);
+        for (size_t i = 0; i < array_size; i++) {
+            arg.hostArg[i] = fromFloat(dist(engine));
+        }
+        cudaMemcpy(arg.kernelArg, arg.hostArg, array_size * sizeof(T),
+                   cudaMemcpyHostToDevice);
+    }
 
    private:
+    static T fromFloat(float value) { return (T)value; }
     size_t array_size;
     float rand_min, rand_max;
 };
+
+template <>
+float CudaRandomArray<float>::fromFloat(float value);
+
+template <>
+half CudaRandomArray<half>::fromFloat(float value);
 
 template <typename T>
 class CudaSetValue : public CudaArgInitializer<T> {

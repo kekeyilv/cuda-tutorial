@@ -1,0 +1,13 @@
+import subprocess
+
+dims = [
+    (37, 73, 41),
+    (100, 100, 100),
+    (200, 400, 600),
+    (1000, 1000, 1000),
+    (2000, 1500, 4000),
+    (10000, 15000, 10000),
+]
+for N, K, M in dims:
+    print(f"[N = {N}, K = {K}, M = {M}]")
+    subprocess.run(["./build/wmma", str(N), str(K), str(M)])
