@@ -141,6 +141,15 @@ class CudaRandomArray : public CudaArgInitializer<T*> {
     float rand_min, rand_max;
 };
 
+class CudaDeviceRandomArray : public CudaArgInitializer<float*> {
+   public:
+    CudaDeviceRandomArray(size_t array_size);
+    void init(CudaArg<float*>& arg) const override;
+
+   private:
+    size_t array_size;
+};
+
 template <>
 float CudaRandomArray<float>::fromFloat(float value);
 

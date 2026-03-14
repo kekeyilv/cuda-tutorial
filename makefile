@@ -5,7 +5,7 @@ endif
 SRCS += ../framework/framework.cu
 
 build/$(NAME): $(SRCS) ../framework/framework.cuh build
-	nvcc $(SRCS) -I ../framework -o build/$(NAME)
+	nvcc $(SRCS) -I ../framework -lcurand -o build/$(NAME)
 	
 build:
 	mkdir build
