@@ -247,6 +247,13 @@ class CudaApp {
         this->tasks.push_back(task);
         return this;
     }
+    template <size_t ArgIndex>
+    CudaApp* copyToConstant(const void* symbol) {
+        auto& arg = std::get<ArgIndex>(args);
+        cudaMemcpyToSymbol(symbol, arg.kernelArg, arg.size, 0UL,
+                           cudaMemcpyDeviceToDevice);
+        return this;
+    }
     template <size_t ResultIndex>
     void run(float tolerance) {
         std::cout << std::setw(15) << "Name";
