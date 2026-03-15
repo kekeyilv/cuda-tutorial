@@ -73,8 +73,8 @@ struct CudaArg<T*> {
     bool isEqualWith(const CudaArg<T*>& b, float tolerance) const {
         for (int i = 0; i < size; i++) {
             if (fabs(toFloat(hostArg[i]) - toFloat(b.hostArg[i])) > tolerance) {
-                printf("%d %f %f\n", i, toFloat(hostArg[i]),
-                       toFloat(b.hostArg[i]));
+                // printf("%d %f %f\n", i, toFloat(hostArg[i]),
+                //        toFloat(b.hostArg[i]));
                 return false;
             }
         }
@@ -250,7 +250,7 @@ class CudaApp {
     template <size_t ArgIndex>
     CudaApp* copyToConstant(const void* symbol) {
         auto& arg = std::get<ArgIndex>(args);
-        cudaMemcpyToSymbol(symbol, arg.kernelArg, arg.size, 0UL,
+        cudaMemcpyToSymbol(symbol, arg.kernelArg, arg.size * sizeof(float), 0UL,
                            cudaMemcpyDeviceToDevice);
         return this;
     }
