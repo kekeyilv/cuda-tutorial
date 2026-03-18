@@ -22,14 +22,13 @@ int main(int argc, char** argv) {
     int block_size = atoi(argv[2]);
     int grid_size = (N + block_size - 1) / block_size;
 
-    auto cudaApp = new CudaApp<float*, float*, float*, int>();
+    auto cudaApp = CudaApp<float*, float*, float*, int>();
     auto hostTask = CudaHostTask("vecadd_host", vectorAdd);
     auto kernelTask =
         CudaKernelTask("vecadd_kernel", grid_size, block_size, 0, g_vectorAdd);
-    cudaApp->addTask(&hostTask)
-        ->addTask(&kernelTask)
-        ->initArgs(CudaRandomArray(N, 0, 1), CudaRandomArray(N, 0, 1),
+    cudaApp.addTask(&hostTask)
+        .addTask(&kernelTask)
+        .initArgs(CudaRandomArray(N, 0, 1), CudaRandomArray(N, 0, 1),
                    CudaNewArray(N), CudaSetValue(N))
-        ->run<2>(0);
-    delete cudaApp;
+        .run<2>(0);
 }

@@ -53,19 +53,17 @@ int main(int argc, char** argv) {
 
     dim3 grid_size((N + TILE_WIDTH - 1) / TILE_WIDTH,
                    (M + TILE_WIDTH - 1) / TILE_WIDTH, 1);
-    auto cudaApp = new CudaApp<half*, half*, half*, int, int, int>();
+    auto cudaApp = CudaApp<half*, half*, half*, int, int, int>();
     auto naive_task =
         CudaKernelTask("matmul_naive", grid_size,
                        dim3(TILE_WIDTH, TILE_WIDTH, 1), 0, g_matmul_naive);
     auto wmma_task =
         CudaKernelTask("matmul_wmma", grid_size, WARP_SIZE, 0, g_matmul_wmma);
 
-    cudaApp->addTask(&naive_task)
-        ->addTask(&wmma_task)
-        ->initArgs(CudaRandomArray<half>(N * K, 0, 1),
-                   CudaRandomArray<half>(K * M, 0, 1),
-                   CudaNewArray<half>(N * M), CudaSetValue(N), CudaSetValue(K),
-                   CudaSetValue(M))
-        ->run<2>(K * 5e-2);
-    delete cudaApp;
+    cudaApp.addTask(&naive_task)
+        .addTask(&wmma_task)
+        .initArgs(CudaRandomArray<half>(N * K, 0, 1),
+                  CudaRandomArray<half>(K * M, 0, 1), CudaNewArray<half>(N * M),
+                  CudaSetValue(N), CudaSetValue(K), CudaSetValue(M))
+        .run<2>(K * 5e-2);
 }

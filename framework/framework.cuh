@@ -239,20 +239,20 @@ template <typename... Args>
 class CudaApp {
    public:
     CudaApp() {};
-    CudaApp* initArgs(const CudaArgInitializer<Args>&... inits) {
+    CudaApp& initArgs(const CudaArgInitializer<Args>&... inits) {
         initArgsImpl(std::index_sequence_for<Args...>{}, inits...);
-        return this;
+        return *this;
     }
-    CudaApp* addTask(CudaTask<Args...>* task) {
+    CudaApp& addTask(CudaTask<Args...>* task) {
         this->tasks.push_back(task);
-        return this;
+        return *this;
     }
     template <size_t ArgIndex>
-    CudaApp* copyToConstant(const void* symbol) {
+    CudaApp& copyToConstant(const void* symbol) {
         auto& arg = std::get<ArgIndex>(args);
         cudaMemcpyToSymbol(symbol, arg.kernelArg, arg.size * sizeof(float), 0UL,
                            cudaMemcpyDeviceToDevice);
-        return this;
+        return *this;
     }
     template <size_t ResultIndex>
     void run(float tolerance) {

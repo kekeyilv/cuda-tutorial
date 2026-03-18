@@ -35,15 +35,14 @@ int main(int argc, char** argv) {
 
     dim3 block_size(32, 32, 1);
     dim3 grid_size((N + 31) / 32, (M + 31) / 32, 1);
-    auto cudaApp = new CudaApp<float*, float*, float*, int, int, int>();
+    auto cudaApp = CudaApp<float*, float*, float*, int, int, int>();
     auto hostTask = CudaHostTask("matmul_host", matmul);
     auto kernelTask =
         CudaKernelTask("matmul_kernel", grid_size, block_size, 0, g_matmul);
-    cudaApp->addTask(&hostTask)
-        ->addTask(&kernelTask)
-        ->initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
-                   CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
-                   CudaSetValue(M))
-        ->run<2>(1e-3);
-    delete cudaApp;
+    cudaApp.addTask(&hostTask)
+        .addTask(&kernelTask)
+        .initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
+                  CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
+                  CudaSetValue(M))
+        .run<2>(1e-3);
 }
