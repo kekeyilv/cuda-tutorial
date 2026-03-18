@@ -8,6 +8,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -31,16 +32,17 @@ struct type_at<0, TypeList<Head, Tail...>> {
 
 template <typename T>
 struct CudaArg {
-    ~CudaArg() {};
+    ~CudaArg() {}
+    CudaArg() {}
+    CudaArg(const CudaArg<T>& src)
+        : hostArg(src.hostArg), kernelArg(src.kernelArg), size(src.size) {}
+    CudaArg(CudaArg<T>&& src) noexcept {
+        std::swap(hostArg, src.hostArg);
+        std::swap(kernelArg, src.kernelArg);
+        std::swap(size, src.size);
+    }
     T hostArg, kernelArg;
     size_t size;
-    CudaArg<T>* clone() const {
-        return new CudaArg<T>{
-            .hostArg = hostArg,
-            .kernelArg = kernelArg,
-            .size = size,
-        };
-    }
     void toHost() { hostArg = kernelArg; }
     bool isEqualWith(const CudaArg<T>& b, float tolerance) const {
         return this->hostArg == b.hostArg && this->kernelArg == b.kernelArg;
@@ -50,22 +52,33 @@ struct CudaArg {
 template <typename T>
 struct CudaArg<T*> {
     ~CudaArg() {
-        delete[] hostArg;
-        cudaFree(kernelArg);
-    };
+        if (hostArg != nullptr) {
+            delete[] hostArg;
+        }
+        if (kernelArg != nullptr) {
+            cudaFree(kernelArg);
+        }
+    }
+    CudaArg() : hostArg(nullptr), kernelArg(nullptr), size(0) {};
+    CudaArg(const CudaArg<T*>& src) : size(src.size) {
+        if (src.hostArg != nullptr) {
+            hostArg = new T[size];
+            std::copy(src.hostArg, src.hostArg + size, hostArg);
+        }
+        if (src.kernelArg != nullptr) {
+            cudaMalloc(&kernelArg, size * sizeof(T));
+            cudaMemcpy(kernelArg, src.kernelArg, size * sizeof(T),
+                       cudaMemcpyDeviceToDevice);
+        }
+    }
+    CudaArg(CudaArg<T*>&& src) noexcept
+        : hostArg(nullptr), kernelArg(nullptr), size(0) {
+        std::swap(hostArg, src.hostArg);
+        std::swap(kernelArg, src.kernelArg);
+        std::swap(size, src.size);
+    }
     T *hostArg, *kernelArg;
     size_t size;
-    CudaArg<T*>* clone() const {
-        CudaArg<T*>* result = new CudaArg<T*>{
-            .hostArg = new T[size],
-            .size = size,
-        };
-        memcpy(result->hostArg, hostArg, size * sizeof(T));
-        cudaMalloc(&result->kernelArg, size * sizeof(T));
-        cudaMemcpy(result->kernelArg, kernelArg, size * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
-        return result;
-    }
     void toHost() {
         cudaMemcpy(hostArg, kernelArg, size * sizeof(T),
                    cudaMemcpyDeviceToHost);
@@ -100,7 +113,7 @@ class CudaArgInitializer {
 template <typename T = float>
 class CudaNewArray : public CudaArgInitializer<T*> {
    public:
-    CudaNewArray(size_t array_size) { this->array_size = array_size; }
+    CudaNewArray(size_t array_size) : array_size(array_size) {};
 
     void init(CudaArg<T*>& arg) const override {
         arg.size = array_size;
@@ -115,11 +128,8 @@ class CudaNewArray : public CudaArgInitializer<T*> {
 template <typename T = float>
 class CudaRandomArray : public CudaArgInitializer<T*> {
    public:
-    CudaRandomArray(size_t array_size, float rand_min, float rand_max) {
-        this->array_size = array_size;
-        this->rand_min = rand_min;
-        this->rand_max = rand_max;
-    }
+    CudaRandomArray(size_t array_size, float rand_min, float rand_max)
+        : array_size(array_size), rand_min(rand_min), rand_max(rand_max) {};
     void init(CudaArg<T*>& arg) const override {
         arg.size = array_size;
         arg.hostArg = new T[array_size];
@@ -159,7 +169,7 @@ half CudaRandomArray<half>::fromFloat(float value);
 template <typename T>
 class CudaSetValue : public CudaArgInitializer<T> {
    public:
-    CudaSetValue(T value) { this->value = value; }
+    CudaSetValue(T value) : value(value) {};
     void init(CudaArg<T>& arg) const override {
         arg.hostArg = arg.kernelArg = value;
     }
@@ -171,6 +181,7 @@ class CudaSetValue : public CudaArgInitializer<T> {
 template <typename... Args>
 class CudaTask {
    public:
+    CudaTask(std::string name) : name(name) {};
     // Returns the running time in ms
     virtual float run(CudaArg<Args>&... args) = 0;
     virtual bool onHost() = 0;
@@ -180,10 +191,8 @@ class CudaTask {
 template <typename... Args>
 class CudaHostTask : public CudaTask<Args...> {
    public:
-    CudaHostTask(std::string name, void (*func)(Args...)) {
-        this->name = name;
-        this->func = func;
-    }
+    CudaHostTask(std::string name, void (*func)(Args...))
+        : CudaTask<Args...>(name), func(func) {}
 
     float run(CudaArg<Args>&... args) override {
         time_point start_h = std::chrono::steady_clock::now();
@@ -206,13 +215,12 @@ template <typename... Args>
 class CudaKernelTask : public CudaTask<Args...> {
    public:
     CudaKernelTask(std::string name, dim3 grid_size, dim3 block_size,
-                   size_t shared_mem_size, void (*func)(Args...)) {
-        this->name = name;
-        this->func = func;
-        this->grid_size = grid_size;
-        this->block_size = block_size;
-        this->shared_mem_size = shared_mem_size;
-    }
+                   size_t shared_mem_size, void (*func)(Args...))
+        : CudaTask<Args...>(name),
+          func(func),
+          grid_size(grid_size),
+          block_size(block_size),
+          shared_mem_size(shared_mem_size) {}
 
     float run(CudaArg<Args>&... args) override {
         float elapsed_time = 0;
@@ -262,7 +270,7 @@ class CudaApp {
         std::cout << "-------------------------------------------" << std::endl;
         using ResultType =
             typename type_at<ResultIndex, TypeList<Args...>>::type;
-        std::vector<CudaArg<ResultType>*> results;
+        std::vector<CudaArg<ResultType>> results;
         CudaArg<ResultType>& resultArg = std::get<ResultIndex>(args);
 
         for (auto task : this->tasks) {
@@ -275,12 +283,13 @@ class CudaApp {
             }
             int result_type = 0;
             for (; result_type < results.size(); result_type++) {
-                if (results[result_type]->isEqualWith(resultArg, tolerance)) {
+                if (results[result_type].isEqualWith(resultArg, tolerance)) {
                     break;
                 }
             }
             if (result_type == results.size()) {
-                results.emplace_back(resultArg.clone());
+                // A implicit copy here
+                results.push_back(resultArg);
             }
             std::cout << std::setw(15) << task->name;
             std::cout << std::setw(13) << std::fixed << std::setprecision(2)
@@ -289,9 +298,6 @@ class CudaApp {
                       << std::endl;
         }
 
-        for (auto result : results) {
-            delete result;
-        }
         std::cout << std::endl;
     }
 
