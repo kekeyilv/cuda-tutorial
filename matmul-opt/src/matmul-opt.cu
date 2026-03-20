@@ -91,8 +91,8 @@ int main(int argc, char** argv) {
     taskGroup.addTask(&naiveTask)
         .addTask(&tiledTask)
         .initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
-                  CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),
-                  CudaSetValue(M), CudaSetValue(tile_width),
-                  CudaSetValue(padding), CudaSetValue(coarse_factor))
+                  CudaNewArray(N * M), CudaConstValue(N), CudaConstValue(K),
+                  CudaConstValue(M), CudaConstValue(tile_width),
+                  CudaConstValue(padding), CudaConstValue(coarse_factor))
         .run<2>(0);
 }

@@ -29,6 +29,6 @@ int main(int argc, char** argv) {
     taskGroup.addTask(&hostTask)
         .addTask(&kernelTask)
         .initArgs(CudaRandomArray(N, 0, 1), CudaRandomArray(N, 0, 1),
-                   CudaNewArray(N), CudaSetValue(N))
+                   CudaNewArray(N), CudaConstValue(N))
         .run<2>(0);
 }

@@ -64,6 +64,6 @@ int main(int argc, char** argv) {
         .addTask(&wmma_task)
         .initArgs(CudaRandomArray<half>(N * K, 0, 1),
                   CudaRandomArray<half>(K * M, 0, 1), CudaNewArray<half>(N * M),
-                  CudaSetValue(N), CudaSetValue(K), CudaSetValue(M))
+                  CudaConstValue(N), CudaConstValue(K), CudaConstValue(M))
         .run<2>(K * 5e-2);
 }

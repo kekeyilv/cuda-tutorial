@@ -130,8 +130,8 @@ int main(int argc, char** argv) {
         .addTask(&tiledTask2)
         .initArgs(CudaDeviceRandomArray(W * H),
                   CudaDeviceRandomArray(pow(radius * 2 + 1, 2)),
-                  CudaNewArray(W * H), CudaSetValue(radius), CudaSetValue(W),
-                  CudaSetValue(H), CudaSetValue(tile_width))
+                  CudaNewArray(W * H), CudaConstValue(radius), CudaConstValue(W),
+                  CudaConstValue(H), CudaConstValue(tile_width))
         .copyToConstant<1>(filter)
         .run<2>(0);
 }

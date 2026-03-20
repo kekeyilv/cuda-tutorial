@@ -167,9 +167,9 @@ template <>
 half CudaRandomArray<half>::fromFloat(float value);
 
 template <typename T>
-class CudaSetValue : public CudaArgInitializer<T> {
+class CudaConstValue : public CudaArgInitializer<T> {
    public:
-    CudaSetValue(T value) : value(value) {};
+    CudaConstValue(T value) : value(value) {};
     void init(CudaArg<T>& arg) const override {
         arg.hostArg = arg.kernelArg = value;
     }
