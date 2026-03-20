@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     dim3 block_size(tile_width, tile_width, 1);
     dim3 grid_size((W + tile_width - 1) / tile_width,
                    (H + tile_width - 1) / tile_width, 1);
-    auto cudaApp = CudaApp<float*, float*, float*, int, int, int, int>();
+    auto taskGroup = CudaTaskGroup<float*, float*, float*, int, int, int, int>();
     auto naiveTask =
         CudaKernelTask("conv_naive", grid_size, block_size, 0, conv_naive);
     auto constMemTask = CudaKernelTask("conv_const_mem", grid_size, block_size,
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
     auto tiledTask2 =
         CudaKernelTask("conv_tiled_2", grid_size, block_size,
                        pow(tile_width, 2) * sizeof(float), conv_tiled_2);
-    cudaApp.addTask(&naiveTask)
+    taskGroup.addTask(&naiveTask)
         .addTask(&constMemTask)
         .addTask(&tiledTask1)
         .addTask(&tiledTask2)

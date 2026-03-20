@@ -76,8 +76,8 @@ int main(int argc, char** argv) {
     dim3 block_size(tile_width, tile_width, 1);
     size_t shared_mem_size =
         2 * tile_width * (tile_width + padding) * sizeof(float);
-    auto cudaApp =
-        CudaApp<float*, float*, float*, int, int, int, int, int, int>();
+    auto taskGroup =
+        CudaTaskGroup<float*, float*, float*, int, int, int, int, int, int>();
     auto naiveTask = CudaKernelTask("matmul_naive",
                                     dim3((N + tile_width - 1) / tile_width,
                                          (M + tile_width - 1) / tile_width, 1),
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
              (M + tile_width * coarse_factor - 1) / tile_width / coarse_factor,
              1),
         block_size, shared_mem_size, g_matmul_tiled);
-    cudaApp.addTask(&naiveTask)
+    taskGroup.addTask(&naiveTask)
         .addTask(&tiledTask)
         .initArgs(CudaRandomArray(N * K, 0, 1), CudaRandomArray(K * M, 0, 1),
                   CudaNewArray(N * M), CudaSetValue(N), CudaSetValue(K),

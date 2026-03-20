@@ -244,19 +244,19 @@ class CudaKernelTask : public CudaTask<Args...> {
 };
 
 template <typename... Args>
-class CudaApp {
+class CudaTaskGroup {
    public:
-    CudaApp() {};
-    CudaApp& initArgs(const CudaArgInitializer<Args>&... inits) {
+    CudaTaskGroup() {};
+    CudaTaskGroup& initArgs(const CudaArgInitializer<Args>&... inits) {
         initArgsImpl(std::index_sequence_for<Args...>{}, inits...);
         return *this;
     }
-    CudaApp& addTask(CudaTask<Args...>* task) {
+    CudaTaskGroup& addTask(CudaTask<Args...>* task) {
         this->tasks.push_back(task);
         return *this;
     }
     template <size_t ArgIndex>
-    CudaApp& copyToConstant(const void* symbol) {
+    CudaTaskGroup& copyToConstant(const void* symbol) {
         auto& arg = std::get<ArgIndex>(args);
         cudaMemcpyToSymbol(symbol, arg.kernelArg, arg.size * sizeof(float), 0UL,
                            cudaMemcpyDeviceToDevice);
