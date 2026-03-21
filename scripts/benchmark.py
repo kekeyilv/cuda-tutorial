@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import subprocess
 import json
-import sys
 from rich import box
 from rich.align import Align
 from rich.console import Console
@@ -24,6 +23,8 @@ class Benchmark:
             group = list(map(lambda x: (x,), group))
         self.args.append(group)
         return self
+    
+    
 
     def run(self):
         table = Table(box=box.ROUNDED)
@@ -102,64 +103,3 @@ class Benchmark:
                 for _, arg_align in prev_args:
                     arg_align.height += 1
                 process.wait()
-
-
-# predefined benchmark behaviors
-benchmarks = {
-    "vecadd": Benchmark("vecadd/build/vecadd")
-    .add_arg_group("N", [100, 10000, 1000000, 100000000])
-    .add_arg_group("block_sizes", [64, 128, 256, 512]),
-    "matmul": Benchmark("matmul/build/matmul").add_arg_group(
-        ("N", "K", "M"),
-        [
-            (37, 73, 41),
-            (100, 100, 100),
-            (200, 400, 600),
-            (1000, 1000, 1000),
-            (2000, 1500, 4000),
-        ],
-    ),
-    "matmul-opt": Benchmark("matmul-opt/build/matmul-opt")
-    .add_arg_group(
-        ("N", "K", "M"),
-        [
-            (37, 73, 41),
-            (100, 100, 100),
-            (1000, 1000, 1000),
-            (2000, 1500, 4000),
-            (10000, 10000, 10000),
-        ],
-    )
-    .add_arg_group("tile_width", [2, 8, 16, 32])
-    .add_arg_group("padding", [1])
-    .add_arg_group("coarse_factor", [1, 4, 16, 64]),
-    "wmma": Benchmark("wmma/build/wmma").add_arg_group(
-        ("N", "K", "M"),
-        [
-            (37, 73, 41),
-            (100, 100, 100),
-            (200, 400, 600),
-            (1000, 1000, 1000),
-            (2000, 1500, 4000),
-            (10000, 15000, 10000),
-        ],
-    ),
-    "conv": Benchmark("conv/build/conv")
-    .add_arg_group(("W", "H"), [(8192, 16384), (32768, 16384)])
-    .add_arg_group("radius", [2, 4, 8])
-    .add_arg_group("tile_widths", [16, 32]),
-    "stencil": Benchmark("stencil/build/stencil")
-    .add_arg_group("N", [50, 100, 800])
-    .add_arg_group("tile_width", [4, 8]),
-}
-
-
-def main():
-    if len(sys.argv) < 2:
-        print("usage: python3 benchmark.py target_name")
-        exit(1)
-    benchmarks[sys.argv[1]].run()
-
-
-if __name__ == "__main__":
-    main()
