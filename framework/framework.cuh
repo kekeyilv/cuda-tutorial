@@ -292,7 +292,6 @@ class CudaTaskGroup {
                       << std::endl;
         }
 
-        std::cout << std::endl;
     }
 
    private:
