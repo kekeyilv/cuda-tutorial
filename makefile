@@ -11,7 +11,7 @@ build:
 	mkdir build
 
 run: build/$(NAME)
-	python3 run.py
+	cd ../ && python3 benchmark.py $(NAME)
 
 clean:
 	rm -rf ./build

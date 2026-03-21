@@ -264,10 +264,6 @@ class CudaTaskGroup {
     }
     template <size_t ResultIndex>
     void run(float tolerance) {
-        std::cout << std::setw(15) << "Name";
-        std::cout << std::setw(15) << "Time";
-        std::cout << std::setw(10) << "Result" << std::endl;
-        std::cout << "-------------------------------------------" << std::endl;
         using ResultType =
             typename type_at<ResultIndex, TypeList<Args...>>::type;
         std::vector<CudaArg<ResultType>> results;
@@ -291,10 +287,8 @@ class CudaTaskGroup {
                 // A implicit copy here
                 results.push_back(resultArg);
             }
-            std::cout << std::setw(15) << task->name;
-            std::cout << std::setw(13) << std::fixed << std::setprecision(2)
-                      << time << "ms";
-            std::cout << std::setw(10) << (char)('A' + result_type)
+            std::cout << "{\"name\":\"" << task->name << "\",\"time\":" << time
+                      << ",\"result\":\"" << (char)('A' + result_type) << "\"}"
                       << std::endl;
         }
 
