@@ -107,6 +107,42 @@ __global__ void stencil_coarsened(float* in, float* out, int N, int _,
     }
 }
 
+__global__ void stencil_reg_tiled(float* in, float* out, int N, int _,
+                                  int tile_width, int coarse_height) {
+    extern __shared__ float tile[];
+    int x = (tile_width - 2) * blockIdx.x + threadIdx.x;
+    int y = (tile_width - 2) * blockIdx.y + threadIdx.y;
+    int z = (coarse_height - 2) * blockIdx.z;
+    int x0 = threadIdx.x;
+    int y0 = threadIdx.y;
+    if (x < N && y < N && z + 1 < N) {
+        float prev = in[z * N * N + y * N + x];
+        tile[y0 * tile_width + x0] = in[(z + 1) * N * N + y * N + x];
+        __syncthreads();
+
+        for (int i = 0; i < coarse_height - 2 && z + i + 1 < N; i++) {
+            float next =
+                (z + i + 2 < N) ? in[(z + i + 2) * N * N + y * N + x] : 0;
+
+            if (x0 >= 1 && y0 >= 1 && x0 < tile_width - 1 &&
+                y0 < tile_width - 1 && x < N - 1 && y < N - 1 &&
+                z + i + 1 < N - 1) {
+                out[(z + i + 1) * N * N + y * N + x] =
+                    C[0] * tile[y0 * tile_width + x0] +
+                    C[1] * tile[y0 * tile_width + x0 + 1] +
+                    C[2] * tile[y0 * tile_width + x0 - 1] +
+                    C[3] * tile[(y0 + 1) * tile_width + x0] +
+                    C[4] * tile[(y0 - 1) * tile_width + x0] + C[5] * next +
+                    C[6] * prev;
+            }
+            __syncthreads();
+            prev = tile[y0 * tile_width + x0];
+            tile[y0 * tile_width + x0] = next;
+            __syncthreads();
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc < 5) {
         puts("usage: stencil N tile_width tile_width_2d coarsen_height");
@@ -134,9 +170,13 @@ int main(int argc, char** argv) {
     auto coarsenedTask = CudaKernelTask(
         "stencil_coarsened", grid_size_2d, block_size_2d,
         3 * pow(tile_width2d, 2) * sizeof(float), stencil_coarsened);
+    auto regTiledTask =
+        CudaKernelTask("stencil_reg_tiled", grid_size_2d, block_size_2d,
+                       pow(tile_width2d, 2) * sizeof(float), stencil_reg_tiled);
     taskGroup.addTask(&naiveTask)
         .addTask(&memTiledTask)
         .addTask(&coarsenedTask)
+        .addTask(&regTiledTask)
         .initArgs(CudaDeviceRandomArray(N * N * N), CudaNewArray(N * N * N),
                   CudaConstValue(N), CudaConstValue(tile_width),
                   CudaConstValue(tile_width2d), CudaConstValue(coarsen_height))
