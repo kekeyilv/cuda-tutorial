@@ -56,7 +56,7 @@ class Benchmark:
         with Live(
             table,
             console=self.console,
-            refresh_per_second=1,
+            refresh_per_second=10,
             vertical_overflow="visible",
         ):
             for args in gen_args(self.args):
