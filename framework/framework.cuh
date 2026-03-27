@@ -251,8 +251,8 @@ class CudaTaskGroup {
         initArgsImpl(std::index_sequence_for<Args...>{}, inits...);
         return *this;
     }
-    CudaTaskGroup& addTask(CudaTask<Args...>* task) {
-        this->tasks.push_back(task);
+    CudaTaskGroup& addTask(CudaTask<Args...>* task, bool hidden = false) {
+        this->tasks.push_back({task, hidden});
         return *this;
     }
     template <size_t ArgIndex>
@@ -269,13 +269,17 @@ class CudaTaskGroup {
         std::vector<CudaArg<ResultType>> results;
         CudaArg<ResultType>& resultArg = std::get<ResultIndex>(args);
 
-        for (auto task : this->tasks) {
+        for (auto task_config : this->tasks) {
+            auto task = task_config.task;
             auto func = [task](CudaArg<Args>&... args) {
                 return task->run(args...);
             };
             float time = std::apply(func, this->args);
             if (!task->onHost()) {
                 resultArg.toHost();
+            }
+            if (task_config.hidden) {
+                continue;
             }
             int result_type = 0;
             for (; result_type < results.size(); result_type++) {
@@ -291,7 +295,6 @@ class CudaTaskGroup {
                       << ",\"result\":\"" << (char)('A' + result_type) << "\"}"
                       << std::endl;
         }
-
     }
 
    private:
@@ -301,8 +304,13 @@ class CudaTaskGroup {
         (..., inits.init(std::get<Indexes>(args)));
     }
 
+    struct TaskConfig {
+        CudaTask<Args...>* task;
+        bool hidden;
+    };
+
     std::tuple<CudaArg<Args>...> args;
-    std::vector<CudaTask<Args...>*> tasks;
+    std::vector<TaskConfig> tasks;
 };
 
 #endif
