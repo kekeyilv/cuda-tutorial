@@ -4,7 +4,7 @@
 __constant__ float filter[1024];
 
 __global__ void conv_naive(float* N, float* F, float* P, int r, int w, int h,
-                           int _) {
+                           int) {
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     float sum = 0;
@@ -22,8 +22,8 @@ __global__ void conv_naive(float* N, float* F, float* P, int r, int w, int h,
     }
 }
 
-__global__ void conv_const_mem(float* N, float* _, float* P, int r, int w,
-                               int h, int __) {
+__global__ void conv_const_mem(float* N, float*, float* P, int r, int w, int h,
+                               int) {
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     float sum = 0;
@@ -41,7 +41,7 @@ __global__ void conv_const_mem(float* N, float* _, float* P, int r, int w,
     }
 }
 
-__global__ void conv_tiled_1(float* N, float* _, float* P, int r, int w, int h,
+__global__ void conv_tiled_1(float* N, float*, float* P, int r, int w, int h,
                              int tile_width) {
     extern __shared__ float tile[];
     int tile_size = (tile_width + 2 * r) * (tile_width + 2 * r);
@@ -73,7 +73,7 @@ __global__ void conv_tiled_1(float* N, float* _, float* P, int r, int w, int h,
     }
 }
 
-__global__ void conv_tiled_2(float* N, float* _, float* P, int r, int w, int h,
+__global__ void conv_tiled_2(float* N, float*, float* P, int r, int w, int h,
                              int tile_width) {
     extern __shared__ float tile[];
     int x = blockDim.x * blockIdx.x + threadIdx.x;
@@ -113,7 +113,8 @@ int main(int argc, char** argv) {
     dim3 block_size(tile_width, tile_width, 1);
     dim3 grid_size((W + tile_width - 1) / tile_width,
                    (H + tile_width - 1) / tile_width, 1);
-    auto taskGroup = CudaTaskGroup<float*, float*, float*, int, int, int, int>();
+    auto taskGroup =
+        CudaTaskGroup<float*, float*, float*, int, int, int, int>();
     auto naiveTask =
         CudaKernelTask("conv_naive", grid_size, block_size, 0, conv_naive);
     auto constMemTask = CudaKernelTask("conv_const_mem", grid_size, block_size,
@@ -130,8 +131,9 @@ int main(int argc, char** argv) {
         .addTask(&tiledTask2)
         .initArgs(CudaDeviceRandomArray(W * H),
                   CudaDeviceRandomArray(pow(radius * 2 + 1, 2)),
-                  CudaNewArray(W * H), CudaConstValue(radius), CudaConstValue(W),
-                  CudaConstValue(H), CudaConstValue(tile_width))
+                  CudaNewArray(W * H), CudaConstValue(radius),
+                  CudaConstValue(W), CudaConstValue(H),
+                  CudaConstValue(tile_width))
         .copyToConstant<1>(filter)
         .run<2>(0);
 }

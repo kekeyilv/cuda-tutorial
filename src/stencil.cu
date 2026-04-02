@@ -4,8 +4,7 @@
 // coefficients.
 __constant__ float C[7]{0, 1, -1, 1, -1, 1, -1};
 
-__global__ void stencil_naive(float* in, float* out, int N, int _, int __,
-                              int ___) {
+__global__ void stencil_naive(float* in, float* out, int N, int, int, int) {
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     int z = blockDim.z * blockIdx.z + threadIdx.z;
@@ -61,7 +60,7 @@ __global__ void stencil_mem_tiled(float* in, float* out, int N, int tile_width,
     }
 }
 
-__global__ void stencil_coarsened(float* in, float* out, int N, int _,
+__global__ void stencil_coarsened(float* in, float* out, int N, int,
                                   int tile_width, int coarse_height) {
     extern __shared__ float tile[];
     float* tile_prev = tile;
@@ -107,7 +106,7 @@ __global__ void stencil_coarsened(float* in, float* out, int N, int _,
     }
 }
 
-__global__ void stencil_reg_tiled(float* in, float* out, int N, int _,
+__global__ void stencil_reg_tiled(float* in, float* out, int N, int,
                                   int tile_width, int coarse_height) {
     extern __shared__ float tile[];
     int x = (tile_width - 2) * blockIdx.x + threadIdx.x;

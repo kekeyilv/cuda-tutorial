@@ -2,8 +2,8 @@
 #define MAX_COARSE_FACTOR 64
 
 // Naive implementation
-__global__ void g_matmul(float* A, float* B, float* C, int N, int K, int M,
-                         int _tile_width, int _padding, int _coarse_factor) {
+__global__ void g_matmul(float* A, float* B, float* C, int N, int K, int M, int,
+                         int, int) {
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     if (x < N && y < M) {
