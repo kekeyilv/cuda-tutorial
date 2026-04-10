@@ -1,4 +1,4 @@
-#include <framework.cuh>
+#include "scan.cuh"
 
 __global__ void g_KoggeStone(float* arr, float* out, float* S, int N) {
     extern __shared__ float tile[];
@@ -57,68 +57,6 @@ __global__ void g_BrentKung(float* arr, float* out, float* S, int N) {
         }
     }
 }
-
-__global__ void g_writeBack(float* arr, float* S, int N) {
-    if (blockIdx.x > 0) {
-        int x0 = blockDim.x * blockIdx.x + threadIdx.x;
-        if (x0 < N) {
-            arr[x0] += S[blockIdx.x - 1];
-        }
-    }
-}
-
-class ScanTask : public CudaTask<float*, float*, int> {
-   public:
-    ScanTask(std::string name, int block_size,
-             void (*func)(float*, float*, float*, int))
-        : CudaTask<float*, float*, int>(name),
-          func(func),
-          block_size(block_size) {}
-
-    float run(CudaArg<float*>& arr, CudaArg<float*>& out,
-              CudaArg<int>& N) override {
-        return scan(arr.kernelArg, out.kernelArg, N.hostArg);
-    }
-
-    bool onHost() override { return false; }
-
-   private:
-    template <typename F>
-    static float call(F func) {
-        float elapsed_time = 0;
-        cudaEvent_t start_d, end_d;
-        cudaEventCreate(&start_d);
-        cudaEventCreate(&end_d);
-        cudaEventRecord(start_d);
-        func();
-        cudaEventRecord(end_d);
-        cudaEventSynchronize(end_d);
-        cudaEventElapsedTime(&elapsed_time, start_d, end_d);
-        return elapsed_time;
-    }
-
-    float scan(float* arr, float* out, int N) {
-        float elapsed_time = 0;
-        int grid_size = (N + block_size - 1) / block_size;
-        float* S = nullptr;
-        if (N >= block_size) {
-            cudaMalloc(&S, N / block_size * sizeof(float));
-        }
-        elapsed_time += call([&] {
-            func<<<grid_size, block_size, block_size * sizeof(float)>>>(
-                arr, out, S, N);
-        });
-        if (S != nullptr) {
-            elapsed_time += scan(S, S, N / block_size);
-        }
-        elapsed_time +=
-            call([&] { g_writeBack<<<grid_size, block_size, 0>>>(out, S, N); });
-        cudaFree(S);
-        return elapsed_time;
-    }
-    void (*func)(float*, float*, float*, int);
-    int block_size;
-};
 
 void prefixSum(float* arr, float* out, int N) {
     double pre = out[0] = arr[0];

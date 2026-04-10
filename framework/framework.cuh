@@ -223,12 +223,16 @@ class CudaKernelTask : public CudaTask<Args...> {
           shared_mem_size(shared_mem_size) {}
 
     float run(CudaArg<Args>&... args) override {
+        return execute(args.kernelArg...);
+    }
+
+    float execute(Args... args) {
         float elapsed_time = 0;
         cudaEvent_t start_d, end_d;
         cudaEventCreate(&start_d);
         cudaEventCreate(&end_d);
         cudaEventRecord(start_d);
-        func<<<grid_size, block_size, shared_mem_size>>>(args.kernelArg...);
+        func<<<grid_size, block_size, shared_mem_size>>>(args...);
         cudaEventRecord(end_d);
         cudaEventSynchronize(end_d);
         cudaEventElapsedTime(&elapsed_time, start_d, end_d);
