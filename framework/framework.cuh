@@ -95,7 +95,7 @@ struct CudaArg<T*> {
     }
 
    private:
-    static float toFloat(T value) { return 0.0f; }
+    static float toFloat(T value) { return (float)value; }
 };
 
 template <>
